@@ -1,0 +1,6 @@
+*.zip
+config.mk
+config.json
+node_modules/*
+etc/
+

@@ -1,0 +1,6 @@
+{
+    "archive": "https://codeload.github.com/<user>/<repo>/zip/master",
+    "dstBucket": "<S3 bucket name>",
+    "srcDir": "/tmp/sources/<repo>-master",
+    "tmpDir": "/tmp/sources"
+}
