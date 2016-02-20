@@ -1,4 +1,4 @@
-# lahg
+# Github Hugo Lambda deployment
 Lambda AWS &lt;> Hugo Project
 
 This project is created to streamline and automate pushing Hugo websites to AWS s3
