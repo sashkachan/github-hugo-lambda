@@ -78,14 +78,16 @@ function siteGenerate(dstBucket, context) {
 }
 
 exports.handler = function(event, context) {
-    var tmpFilePath = "/tmp/master.zip";
+    var tmpFilePath = "/tmp/master" + Math.random() * 100 + ".zip";
 
     https.get(config.archive, function(response) {
 	response.on('data', function (data) {
 	    fs.appendFileSync(tmpFilePath, data);
 	});
 	response.on('end', function() {
+	    console.log("Zip: " + tmpFilePath)
 	    var zip = new AdmZip(tmpFilePath);
+	    fs.unlink(config.tmpDir);
 	    zip.extractAllTo(config.tmpDir);
 	    fs.unlink(tmpFilePath);
 	    siteGenerate(config.dstBucket, context);

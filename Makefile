@@ -9,7 +9,7 @@ clean :
 	rm -rf *.zip
 
 build :
-	7za a runhugo.zip * -x!Makefile -x!*.mk
+	7za a runhugo.zip * -x!Makefile -x!*.mk -x!sample.*
 
 rmlambda:
 	aws lambda delete-function --function-name ${FUNC_NAME}
