@@ -86,6 +86,7 @@ function siteGenerate(dstBucket, context) {
 		if (err) {
 		    throw err;
 		}
+		// TODO: don't upload the file if it's of the same length
 		data.Contents.forEach(function (data) {
 		    if (files
 			.filter(function (e) { return e.name.substr(1) == data.Key; })
@@ -130,8 +131,11 @@ function siteGenerate(dstBucket, context) {
 
 exports.handler = function(event, context) {
     var tmpFilePath = "/tmp/master" + Math.round(Math.random () * 100) + ".zip";
-    // TODO: ensure only push on master gets triggered
-    //console.log(event.Records[0].Sns); 
+    var snsEventJson = JSON.parse(event.Records[0].Sns.Message);
+    if (snsEventJson.ref != "refs/heads/master") {
+	console.log("Not master ref, but " + snsEventJson.ref);
+	context.done();
+    }
     https.get(config.archive, function(response) {
 	response.on('data', function (data) {
 	    fs.appendFileSync(tmpFilePath, data);
