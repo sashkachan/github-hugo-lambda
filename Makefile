@@ -1,4 +1,4 @@
-.PHONY: clean build deleteLambda deploy default
+.PHONY: clean build rmlambda deploy default
 
 include config.mk
 
