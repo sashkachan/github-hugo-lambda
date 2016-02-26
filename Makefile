@@ -23,4 +23,8 @@ deploy :
 		--zip-file ${CODE_ZIP} \
 		--timeout ${TIMEOUT}
 
+createsns:
+	aws sns create-topic --name GithubWebhookEvent
+
+
 default : build
