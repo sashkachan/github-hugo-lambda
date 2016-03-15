@@ -53,7 +53,7 @@ function siteGenerate(dstBucket, context) {
 	    });
 	    child.on('error', function(err) {
 		console.log("hugo failed with error: " + err);
-		next(err);
+		context.done();
 	    });
 	    child.on('close', function(code) {
 		console.log("hugo exited with code: " + code);
@@ -70,7 +70,8 @@ function siteGenerate(dstBucket, context) {
 	    	console.log('ls-stderr: ' + data);
 	    });
 	    child.on('error', function(err) {
-		next(err);
+		console.log("error listing contents" + err);
+                context.done();
 	    });
 	    child.on('close', function(code) {
 		next(null);
@@ -78,22 +79,21 @@ function siteGenerate(dstBucket, context) {
 	},
         function syncRemoved(next) {
 	    files = getFilesRecursive(pubDir);
-	    var params = {
+            var params = {
 		Bucket: config.dstBucket
 	    };
 	    var s3 = new AWS.S3();
 	    s3.listObjects(params, function(err, data) {
-		if (err) {
-		    throw err;
-		}
+		if (err) { console.log(err); context.done(); }
 		// TODO: don't upload the file if it's of the same length
+                
 		data.Contents.forEach(function (data) {
 		    if (files
 			.filter(function (e) { return e.name.substr(1) == data.Key; })
 			.length == 0) {
 			s3del = new AWS.S3();
 			console.log("Removing key:" + data.Key);
-			s3del.deleteObject({Bucket: config.dstBucket, Key: data.Key}, function (err, data) { if (err) { throw err;}}); 
+			s3del.deleteObject({Bucket: config.dstBucket, Key: data.Key}, function (err, data) { if (err) { console.log(err);throw err;}}); 
 		    }
 		});
 	    });
@@ -101,12 +101,10 @@ function siteGenerate(dstBucket, context) {
 	},
         function upload(next) {
 	    var totalUploaded = 0;
-            console.log(files);
-	    
-	    files.forEach(function (filename) {
+            files.forEach(function (filename) {
 		var fileStream = fs.createReadStream(pubDir + '/' + filename.name);
 		fileStream.on('error', function (err) {
-		    if (err) { throw err; }
+		    if (err) { console.log(err);context.done();}
 		});  
 		fileStream.on('open', function () {
 		    var s3 = new AWS.S3();
@@ -117,10 +115,11 @@ function siteGenerate(dstBucket, context) {
 			ContentType: mime.lookup(filename.name),
 			Body: fileStream
 		    }, function (err) {
-			if (err) { throw err; }
+			if (err) { console.log(err);context.done();}
 		    });
 		});
 	    });
+	    next(null);
 	},
     ], function(err) {
         if (err) console.error("Failure because of: " + err);
@@ -131,10 +130,13 @@ function siteGenerate(dstBucket, context) {
 
 exports.handler = function(event, context) {
     var tmpFilePath = "/tmp/master" + Math.round(Math.random () * 100) + ".zip";
-    var snsEventJson = JSON.parse(event.Records[0].Sns.Message);
-    if (snsEventJson.ref != "refs/heads/master") {
-	console.log("Not master ref, but " + snsEventJson.ref);
-	context.done();
+    
+    if (event.Records != null && event.Records[0]) {
+	var snsEventJson = JSON.parse(event.Records[0].Sns.Message);
+	if (snsEventJson.ref != "refs/heads/master") {
+	    console.log("Not master ref, but " + snsEventJson.ref);
+	    context.done();
+	}
     }
     https.get(config.archive, function(response) {
 	response.on('data', function (data) {
@@ -145,9 +147,8 @@ exports.handler = function(event, context) {
 	    var zip = new AdmZip(tmpFilePath);
 	    zip.extractAllTo(config.tmpDir);
 	    // fs.unlinkSync(tmpFilePath);
-	    siteGenerate(config.dstBucket, context);
+	    siteGenerate(config.dstBucket, context);	    
 	});
     });
 };
 
-// exports.handler();
