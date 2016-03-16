@@ -5,7 +5,7 @@ var AWS = require('aws-sdk');
 var config = require("./config.json");
 var fs = require("fs");
 var mime = require('mime');
-var https = require('https');
+var https = require('follow-redirects').https;
 var AdmZip = require('adm-zip');
 
 var pubDir = config.tmpDir + "/public";
@@ -38,12 +38,12 @@ function getFilesRecursive (folder) {
     return fileTree;
 };
 
-function siteGenerate(dstBucket, context) {
+function siteGenerate(srcDir, dstBucket, context) {
     async.waterfall([
         
 	function runHugo(next) {
 	    console.log("Running hugo");
-	    var child = child_process.spawn("./hugo", ["-v", "--source=" + config.srcDir, "--destination=" + pubDir]);
+	    var child = child_process.spawn("./hugo", ["-v", "--source=" + srcDir, "--destination=" + pubDir]);
             
 	    child.stdout.on('data', function (data) {
 	    	console.log('hugo-stdout: ' + data);
@@ -129,26 +129,32 @@ function siteGenerate(dstBucket, context) {
 }
 
 exports.handler = function(event, context) {
-    var tmpFilePath = "/tmp/master" + Math.round(Math.random () * 100) + ".zip";
-    
+    var tmpFilePath = "/tmp/master" + Math.round(Math.random () * 100) + ".zip"; 
+    var dlUrl = "https://github.com/" + config.owner + "/" + config.repo + "/archive/master.zip";
+    var srcDir = config.tmpDir + "/" + config.repo + "-";
     if (event.Records != null && event.Records[0]) {
+	console.log(event.Records[0]);
 	var snsEventJson = JSON.parse(event.Records[0].Sns.Message);
 	if (snsEventJson.ref != "refs/heads/master") {
 	    console.log("Not master ref, but " + snsEventJson.ref);
 	    context.done();
+	} else {
+	    dlUrl = "https://github.com/" + config.owner + "/" + config.repo + "/archive/" + snsEventJson.after + ".zip";
+	    srcDir = srcDir + snsEventJson.after;
 	}
+    } else {
+	srcDir = srcDir + "master";
     }
-    https.get(config.archive, function(response) {
+    console.log("archive url: " + dlUrl);
+    https.get(dlUrl, function(response) {
 	response.on('data', function (data) {
 	    fs.appendFileSync(tmpFilePath, data);
 	});
 	response.on('end', function() {
 	    console.log("Zip: " + tmpFilePath);
 	    var zip = new AdmZip(tmpFilePath);
-	    zip.extractAllTo(config.tmpDir);
-	    // fs.unlinkSync(tmpFilePath);
-	    siteGenerate(config.dstBucket, context);	    
+	    zip.extractAllTo(config.tmpDir);	    
+	    siteGenerate(srcDir, config.dstBucket, context);
 	});
     });
 };
-

@@ -3,7 +3,7 @@
 include config.mk
 
 initnodedeps:
-	npm install --prefix . fs https adm-zip async aws-sdk mime
+	npm install --prefix . https fs adm-zip async aws-sdk mime follow-redirects
 
 clean :
 	rm -rf *.zip
